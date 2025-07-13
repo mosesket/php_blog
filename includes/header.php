@@ -8,7 +8,7 @@ require_once 'config/database.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($page_title) ? $page_title . ' - ' : ''; ?>Student's Community Engagement Blog</title>
     <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
+    <!-- <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico"> -->
 </head>
 <body data-logged-in="<?php echo isLoggedIn() ? 'true' : 'false'; ?>">
     <header class="header">
