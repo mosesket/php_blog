@@ -16,7 +16,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $category = sanitize($_POST['category']);
     $tags = sanitize($_POST['tags']);
     $status = sanitize($_POST['status']);
-    $media_ids = isset($_POST['media_ids']) ? explode(',', $_POST['media_ids']) : [];
+    $media_ids_raw = isset($_POST['media_ids']) ? $_POST['media_ids'] : '';
+    
+    // Debug: Log the media_ids received
+    error_log("Received media_ids: " . $media_ids_raw);
+    
+    // Process media IDs - filter out empty values
+    $media_ids = array_filter(explode(',', $media_ids_raw), function($id) {
+        return !empty(trim($id)) && is_numeric(trim($id));
+    });
+    
+    error_log("Processed media_ids: " . print_r($media_ids, true));
     
     if (empty($title) || empty($content)) {
         $error = 'Please fill in title and content';
@@ -28,7 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         try {
             $db->beginTransaction();
             
-            $has_media = !empty($media_ids) && !empty(array_filter($media_ids));
+            $has_media = !empty($media_ids);
+            error_log("Has media: " . ($has_media ? 'YES' : 'NO') . " | Count: " . count($media_ids));
+            
             $insert_query = "
                 INSERT INTO posts (user_id, title, content, category, tags, status, has_media) 
                 VALUES (:user_id, :title, :content, :category, :tags, :status, :has_media)
@@ -44,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             if ($insert_stmt->execute()) {
                 $post_id = $db->lastInsertId();
+                error_log("Created post with ID: " . $post_id);
                 
                 // Link media files to post
                 if ($has_media) {
@@ -53,10 +66,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     foreach ($media_ids as $index => $media_id) {
                         $media_id = trim($media_id);
                         if (!empty($media_id) && is_numeric($media_id)) {
+                            error_log("Linking media_id $media_id to post_id $post_id with order $index");
+                            
                             $media_stmt->bindParam(':post_id', $post_id);
                             $media_stmt->bindParam(':media_id', $media_id);
                             $media_stmt->bindParam(':order', $index);
-                            $media_stmt->execute();
+                            
+                            if ($media_stmt->execute()) {
+                                error_log("Successfully linked media_id $media_id to post_id $post_id");
+                            } else {
+                                error_log("Failed to link media_id $media_id to post_id $post_id");
+                                error_log("SQL Error: " . print_r($media_stmt->errorInfo(), true));
+                            }
                         }
                     }
                 }
@@ -75,7 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         } catch (Exception $e) {
             $db->rollBack();
-            $error = 'Failed to create post. Please try again.';
+            error_log("Post creation error: " . $e->getMessage());
+            $error = 'Failed to create post. Please try again. Error: ' . $e->getMessage();
         }
     }
 }
