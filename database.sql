@@ -53,6 +53,35 @@ CREATE TABLE likes (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Create media uploads table
+CREATE TABLE media_uploads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_type ENUM('image', 'video') NOT NULL,
+    file_size INT NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Create post-media relationship table
+CREATE TABLE post_media (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT NOT NULL,
+    media_id INT NOT NULL,
+    display_order INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (media_id) REFERENCES media_uploads(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_post_media (post_id, media_id)
+);
+
+-- Add has_media column to posts
+ALTER TABLE posts ADD COLUMN has_media BOOLEAN DEFAULT FALSE AFTER tags;
+
 -- Sample data
 INSERT INTO users (username, email, password, full_name, department, student_id) VALUES
 ('bisola_dev', 'bisola@tpi.edu.ng', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Adeneye Bisola Oluwatimileyin', 'Computer Science', '2023215020048'),

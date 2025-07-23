@@ -414,80 +414,321 @@ body {
     z-index: 1;
 }
 
-/* Blog Posts */
+/* My Posts Page Styling */
 .post-card {
-    background: white;
+    background: white !important;
     border-radius: 10px;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     transition: transform 0.3s;
+    border: 1px solid #e9ecef;
 }
 
 .post-card:hover {
     transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
 }
 
+/* Post header styling */
 .post-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .post-meta {
     font-size: 0.9rem;
-    color: #666;
+    color: #666 !important;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
+/* Status badges */
+.category-badge {
+    background: #95a5a6 !important;
+    color: white !important;
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-left: 0;
+    margin-right: 0.5rem;
+    display: inline-block;
+}
+
+/* Status-specific colors */
+.category-badge[style*="#27ae60"] {
+    background: #27ae60 !important; /* Published - Green */
+}
+
+.category-badge[style*="#f39c12"] {
+    background: #f39c12 !important; /* Draft - Orange */
+}
+
+/* Post title styling */
 .post-title {
     font-size: 1.4rem;
-    margin: 0.5rem 0;
-    color: #2c3e50;
+    margin: 0.5rem 0 1rem 0;
+    color: #2c3e50 !important;
+    font-weight: 600;
+    line-height: 1.3;
 }
 
 .post-title a {
-    color: inherit;
+    color: inherit !important;
     text-decoration: none;
 }
 
 .post-title a:hover {
-    color: #3498db;
+    color: #3498db !important;
 }
 
+/* Post content preview */
 .post-content {
     margin: 1rem 0;
     line-height: 1.7;
+    color: #555 !important;
+    font-size: 0.95rem;
 }
 
-.post-actions {
+/* Tags styling */
+.tags {
     display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #eee;
+    gap: 0.5rem;
+    margin: 1rem 0;
     flex-wrap: wrap;
 }
 
+.tag {
+    background: #3498db !important;
+    color: white !important;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.tag:hover {
+    background: #2980b9 !important;
+    color: white !important;
+}
+
+/* Post actions styling */
+.post-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+/* Action buttons - left side stats */
+.post-actions > div:first-child {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Action buttons - right side controls */
+.post-actions > div:last-child {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Stats display */
 .action-btn {
-    background: none;
-    border: none;
-    color: #666;
+    background: none !important;
+    border: none !important;
+    color: #666 !important;
     cursor: pointer;
     font-size: 0.9rem;
     display: flex;
     align-items: center;
     gap: 0.3rem;
     transition: color 0.3s;
-    text-decoration: none;
+    text-decoration: none !important;
+    padding: 0.2rem 0;
 }
 
 .action-btn:hover {
-    color: #3498db;
+    color: #3498db !important;
 }
 
-.action-btn.liked {
-    color: #e74c3c;
+/* Control buttons styling */
+.btn {
+    padding: 0.4rem 0.8rem;
+    border: none;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.85rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: #3498db !important;
+    color: white !important;
+    border: 1px solid #3498db;
+}
+
+.btn-primary:hover {
+    background: #2980b9 !important;
+    border-color: #2980b9;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: white !important;
+    color: #666 !important;
+    border: 1px solid #ddd;
+}
+
+.btn-secondary:hover {
+    background: #f8f9fa !important;
+    color: #3498db !important;
+    border-color: #3498db;
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background: #e74c3c !important;
+    color: white !important;
+    border: 1px solid #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b !important;
+    border-color: #c0392b;
+    transform: translateY(-1px);
+}
+
+/* Form styling for inline forms */
+form[method="POST"] {
+    display: inline;
+    margin: 0;
+}
+
+/* Responsive adjustments for post actions */
+@media (max-width: 768px) {
+    .post-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .post-actions > div:first-child,
+    .post-actions > div:last-child {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .btn {
+        flex: 1;
+        justify-content: center;
+        min-width: 0;
+    }
+    
+    .post-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .post-meta {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .post-actions > div:last-child {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .category-badge {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.6rem;
+    }
+}
+
+/* Filter form styling */
+.post-card form[method="GET"] {
+    background: #f8f9fa !important;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 0;
+}
+
+.post-card form[method="GET"] .form-group {
+    margin-bottom: 1rem;
+}
+
+.post-card form[method="GET"] button[type="submit"] {
+    background: #3498db !important;
+    color: white !important;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.post-card form[method="GET"] button[type="submit"]:hover {
+    background: #2980b9 !important;
+}
+
+/* Empty state styling */
+.post-card div[style*="text-align: center"] {
+    padding: 3rem 2rem;
+    color: #666 !important;
+}
+
+.post-card div[style*="text-align: center"] h3 {
+    color: #2c3e50 !important;
+    margin-bottom: 1rem;
+}
+
+/* Pagination styling */
+div[style*="text-align: center"] .btn {
+    margin: 0 0.5rem;
+    padding: 0.6rem 1.2rem;
+}
+
+/* Ensure proper spacing and alignment */
+.post-card * {
+    box-sizing: border-box;
+}
+
+/* Fix any text wrapping issues */
+.post-title,
+.post-content {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
 }
 
 /* Media Upload Styles */
