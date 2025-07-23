@@ -55,7 +55,7 @@ CREATE TABLE likes (
 
 -- Sample data
 INSERT INTO users (username, email, password, full_name, department, student_id) VALUES
-('ket_dev', 'bisola@tpi.edu.ng', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Adeneye Bisola Oluwatimileyin', 'Computer Science', '2023215020048'),
+('bisola_dev', 'bisola@tpi.edu.ng', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Adeneye Bisola Oluwatimileyin', 'Computer Science', '2023215020048'),
 ('john_doe', 'john@tpi.edu.ng', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'John Doe', 'Engineering', '2023215020049');
 
 INSERT INTO posts (user_id, title, content, category, tags) VALUES

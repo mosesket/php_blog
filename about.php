@@ -238,7 +238,7 @@ require_once 'includes/header.php';
                         💬 Commented on "Welcome to TPI Blog Community"
                     </div>
                     <div style="font-size: 0.8rem; color: #666;">
-                        by <strong>ket_dev</strong> • 3 hours ago
+                        by <strong>bisola_dev</strong> • 3 hours ago
                     </div>
                 </div>
                 <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #eee;">
@@ -246,7 +246,7 @@ require_once 'includes/header.php';
                         📝 New post: "Programming Tips for Beginners"
                     </div>
                     <div style="font-size: 0.8rem; color: #666;">
-                        by <strong>ket_dev</strong> • 5 hours ago
+                        by <strong>bisola_dev</strong> • 5 hours ago
                     </div>
                 </div>
             </div> -->

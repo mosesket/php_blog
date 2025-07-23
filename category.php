@@ -1,24 +1,29 @@
 <?php
-$page_title = "Home";
 require_once 'includes/header.php';
 
-// Database connection
+$category = isset($_GET['cat']) ? sanitize($_GET['cat']) : '';
+
+if (empty($category)) {
+    redirect('index.php');
+}
+
 $database = new Database();
 $db = $database->connect();
 
 // Pagination
-$posts_per_page = 5;
+$posts_per_page = 10;
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $offset = ($page - 1) * $posts_per_page;
 
-// Get total posts count
-$count_query = "SELECT COUNT(*) FROM posts WHERE status = 'published'";
+// Get total posts count for this category
+$count_query = "SELECT COUNT(*) FROM posts WHERE category = :category AND status = 'published'";
 $count_stmt = $db->prepare($count_query);
+$count_stmt->bindParam(':category', $category);
 $count_stmt->execute();
 $total_posts = $count_stmt->fetchColumn();
 $total_pages = ceil($total_posts / $posts_per_page);
 
-// Get posts with user information, like counts, and media
+// Get posts for this category with user information, like counts, and media
 $query = "
     SELECT p.*, u.username, u.full_name,
            COUNT(DISTINCT l.id) as like_count,
@@ -27,13 +32,14 @@ $query = "
     LEFT JOIN users u ON p.user_id = u.id 
     LEFT JOIN likes l ON p.id = l.post_id
     LEFT JOIN comments c ON p.id = c.post_id
-    WHERE p.status = 'published' 
+    WHERE p.category = :category AND p.status = 'published' 
     GROUP BY p.id
     ORDER BY p.created_at DESC 
     LIMIT :limit OFFSET :offset
 ";
 
 $stmt = $db->prepare($query);
+$stmt->bindParam(':category', $category);
 $stmt->bindParam(':limit', $posts_per_page, PDO::PARAM_INT);
 $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
@@ -58,43 +64,87 @@ foreach ($posts as $post) {
     }
 }
 
-// Get popular categories
-$category_query = "
+// Get all categories for sidebar
+$categories_query = "
     SELECT category, COUNT(*) as count 
     FROM posts 
-    WHERE status = 'published' AND category IS NOT NULL
+    WHERE status = 'published' AND category IS NOT NULL AND category != ''
     GROUP BY category 
-    ORDER BY count DESC 
-    LIMIT 5
+    ORDER BY category ASC
 ";
-$category_stmt = $db->prepare($category_query);
-$category_stmt->execute();
-$categories = $category_stmt->fetchAll(PDO::FETCH_ASSOC);
+$categories_stmt = $db->prepare($categories_query);
+$categories_stmt->execute();
+$all_categories = $categories_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get recent comments
-$recent_comments_query = "
-    SELECT c.content, c.created_at, u.username, p.title, p.id as post_id
-    FROM comments c
-    LEFT JOIN users u ON c.user_id = u.id
-    LEFT JOIN posts p ON c.post_id = p.id
-    WHERE p.status = 'published'
-    ORDER BY c.created_at DESC
+// Get category statistics
+$stats_query = "
+    SELECT 
+        COUNT(*) as post_count,
+        COUNT(DISTINCT user_id) as contributor_count,
+        SUM(views) as total_views
+    FROM posts 
+    WHERE category = :category AND status = 'published'
+";
+$stats_stmt = $db->prepare($stats_query);
+$stats_stmt->bindParam(':category', $category);
+$stats_stmt->execute();
+$category_stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
+
+// Get top contributors in this category
+$contributors_query = "
+    SELECT u.username, u.full_name, COUNT(p.id) as post_count
+    FROM users u
+    JOIN posts p ON u.id = p.user_id
+    WHERE p.category = :category AND p.status = 'published'
+    GROUP BY u.id
+    ORDER BY post_count DESC
     LIMIT 5
 ";
-$recent_comments_stmt = $db->prepare($recent_comments_query);
-$recent_comments_stmt->execute();
-$recent_comments = $recent_comments_stmt->fetchAll(PDO::FETCH_ASSOC);
+$contributors_stmt = $db->prepare($contributors_query);
+$contributors_stmt->bindParam(':category', $category);
+$contributors_stmt->execute();
+$top_contributors = $contributors_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$page_title = $category . " - Category";
 ?>
 
 <div class="container">
     <div class="main-content">
         <main class="content">
+            <!-- Category Header -->
+            <div class="post-card" style="text-align: center; background: linear-gradient(135deg, #f8f9fa, #e9ecef); margin-bottom: 2rem;">
+                <h1 style="font-size: 2.5rem; color: #2c3e50; margin-bottom: 0.5rem;">
+                    📁 <?php echo htmlspecialchars($category); ?>
+                </h1>
+                <p style="font-size: 1.1rem; color: #666; margin-bottom: 1rem;">
+                    Explore posts in the <?php echo htmlspecialchars($category); ?> category
+                </p>
+                <div style="display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;">
+                    <div style="text-align: center;">
+                        <strong style="font-size: 1.5rem; color: #3498db;"><?php echo $category_stats['post_count']; ?></strong>
+                        <br><small>Posts</small>
+                    </div>
+                    <div style="text-align: center;">
+                        <strong style="font-size: 1.5rem; color: #27ae60;"><?php echo $category_stats['contributor_count']; ?></strong>
+                        <br><small>Contributors</small>
+                    </div>
+                    <div style="text-align: center;">
+                        <strong style="font-size: 1.5rem; color: #f39c12;"><?php echo number_format($category_stats['total_views']); ?></strong>
+                        <br><small>Total Views</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Posts List -->
             <?php if (empty($posts)): ?>
                 <div style="text-align: center; padding: 3rem;">
-                    <h2>Welcome to Student's Community Engagement Blog!</h2>
-                    <p>No posts yet. Be the first to share your thoughts!</p>
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">📝</div>
+                    <h3>No posts found in this category</h3>
+                    <p style="color: #666; margin-bottom: 2rem;">
+                        Be the first to contribute to the <?php echo htmlspecialchars($category); ?> category!
+                    </p>
                     <?php if (isLoggedIn()): ?>
-                        <a href="create_post.php" class="btn btn-primary">Write Your First Post</a>
+                        <a href="create_post.php" class="btn btn-primary">Create First Post</a>
                     <?php else: ?>
                         <a href="register.php" class="btn btn-primary">Join Our Community</a>
                     <?php endif; ?>
@@ -106,9 +156,7 @@ $recent_comments = $recent_comments_stmt->fetchAll(PDO::FETCH_ASSOC);
                             <div class="post-meta">
                                 By <strong><?php echo htmlspecialchars($post['username']); ?></strong>
                                 • <?php echo timeAgo($post['created_at']); ?>
-                                <?php if ($post['category']): ?>
-                                    <span class="category-badge"><?php echo htmlspecialchars($post['category']); ?></span>
-                                <?php endif; ?>
+                                • <?php echo $post['views']; ?> views
                             </div>
                         </div>
                         
@@ -204,8 +252,12 @@ $recent_comments = $recent_comments_stmt->fetchAll(PDO::FETCH_ASSOC);
                 <!-- Pagination -->
                 <?php if ($total_pages > 1): ?>
                     <div style="text-align: center; margin-top: 2rem;">
+                        <?php
+                        $base_url = "?cat=" . urlencode($category);
+                        ?>
+                        
                         <?php if ($page > 1): ?>
-                            <a href="?page=<?php echo $page - 1; ?>" class="btn btn-secondary">Previous</a>
+                            <a href="<?php echo $base_url; ?>&page=<?php echo $page - 1; ?>" class="btn btn-secondary">Previous</a>
                         <?php endif; ?>
                         
                         <span style="margin: 0 1rem;">
@@ -213,7 +265,7 @@ $recent_comments = $recent_comments_stmt->fetchAll(PDO::FETCH_ASSOC);
                         </span>
                         
                         <?php if ($page < $total_pages): ?>
-                            <a href="?page=<?php echo $page + 1; ?>" class="btn btn-secondary">Next</a>
+                            <a href="<?php echo $base_url; ?>&page=<?php echo $page + 1; ?>" class="btn btn-secondary">Next</a>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
@@ -221,215 +273,108 @@ $recent_comments = $recent_comments_stmt->fetchAll(PDO::FETCH_ASSOC);
         </main>
         
         <aside class="sidebar">
-            <!-- Search Widget -->
+            <!-- Category Navigation Widget -->
             <div class="widget">
-                <h3>Search Posts</h3>
-                <div class="form-group">
-                    <input type="text" id="search-input" class="form-control" placeholder="Search for posts...">
+                <h3>📂 All Categories</h3>
+                <ul>
+                    <?php foreach ($all_categories as $cat): ?>
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="category.php?cat=<?php echo urlencode($cat['category']); ?>" 
+                               style="display: flex; justify-content: space-between; align-items: center; padding: 0.3rem 0; <?php echo $cat['category'] === $category ? 'font-weight: bold; color: #2c3e50 !important;' : ''; ?>">
+                                <span><?php echo htmlspecialchars($cat['category']); ?></span>
+                                <small style="background: #3498db; color: white; padding: 0.1rem 0.5rem; border-radius: 10px;">
+                                    <?php echo $cat['count']; ?>
+                                </small>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+                
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
+                    <a href="index.php" class="btn btn-secondary" style="width: 100%; text-align: center;">
+                        🏠 Back to All Posts
+                    </a>
                 </div>
-                <div id="search-results"></div>
             </div>
             
-            <!-- Categories Widget -->
-            <?php if (!empty($categories)): ?>
+            <!-- Top Contributors Widget -->
+            <?php if (!empty($top_contributors)): ?>
                 <div class="widget">
-                    <h3>Popular Categories</h3>
-                    <ul>
-                        <?php foreach ($categories as $category): ?>
-                            <li style="margin-bottom: 0.5rem;">
-                                <a href="category.php?cat=<?php echo urlencode($category['category']); ?>">
-                                    <?php echo htmlspecialchars($category['category']); ?> 
-                                    (<?php echo $category['count']; ?>)
-                                </a>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-            <?php endif; ?>
-            
-            <!-- Recent Comments Widget -->
-            <?php if (!empty($recent_comments)): ?>
-                <div class="widget">
-                    <h3>Recent Comments</h3>
-                    <?php foreach ($recent_comments as $comment): ?>
-                        <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #eee;">
-                            <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.3rem;">
-                                <strong><?php echo htmlspecialchars($comment['username']); ?></strong>
-                                on <a href="post.php?id=<?php echo $comment['post_id']; ?>">
-                                    <?php echo htmlspecialchars(substr($comment['title'], 0, 30)) . '...'; ?>
-                                </a>
+                    <h3>👥 Top Contributors</h3>
+                    <?php foreach ($top_contributors as $contributor): ?>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; padding: 0.5rem; background: #f8f9fa; border-radius: 5px;">
+                            <div>
+                                <strong><?php echo htmlspecialchars($contributor['username']); ?></strong>
+                                <br><small style="color: #666;"><?php echo htmlspecialchars($contributor['full_name']); ?></small>
                             </div>
-                            <div style="font-size: 0.9rem;">
-                                <?php echo htmlspecialchars(substr($comment['content'], 0, 60)) . '...'; ?>
+                            <div style="text-align: center;">
+                                <strong style="color: #3498db;"><?php echo $contributor['post_count']; ?></strong>
+                                <br><small>posts</small>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
             
-            <!-- Stats Widget -->
+            <!-- Category Stats Widget -->
             <div class="widget">
-                <h3>Community Stats</h3>
-                <div style="display: grid; gap: 0.5rem;">
-                    <div>📝 Total Posts: <strong><?php echo $total_posts; ?></strong></div>
-                    <div>👥 Active Categories: <strong><?php echo count($categories); ?></strong></div>
-                    <div>💬 Recent Comments: <strong><?php echo count($recent_comments); ?></strong></div>
+                <h3>📊 Category Statistics</h3>
+                <div style="display: grid; gap: 0.8rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>📝 Total Posts:</span>
+                        <strong style="color: #3498db;"><?php echo $category_stats['post_count']; ?></strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>👥 Contributors:</span>
+                        <strong style="color: #27ae60;"><?php echo $category_stats['contributor_count']; ?></strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>👁️ Total Views:</span>
+                        <strong style="color: #f39c12;"><?php echo number_format($category_stats['total_views']); ?></strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>📈 Avg Views/Post:</span>
+                        <strong style="color: #9b59b6;">
+                            <?php echo $category_stats['post_count'] > 0 ? number_format($category_stats['total_views'] / $category_stats['post_count']) : 0; ?>
+                        </strong>
+                    </div>
                 </div>
                 
-                <?php if (!isLoggedIn()): ?>
+                <?php if (isLoggedIn()): ?>
                     <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
-                        <a href="register.php" class="btn btn-primary" style="width: 100%; text-align: center;">
-                            Join Our Community
+                        <a href="create_post.php" class="btn btn-primary" style="width: 100%; text-align: center;">
+                            ✍️ Write in <?php echo htmlspecialchars($category); ?>
                         </a>
                     </div>
                 <?php endif; ?>
             </div>
+            
+            <!-- Quick Actions Widget -->
+            <div class="widget">
+                <h3>⚡ Quick Actions</h3>
+                <div style="display: grid; gap: 0.5rem;">
+                    <a href="index.php" class="btn btn-secondary" style="width: 100%; text-align: center;">
+                        🏠 All Posts
+                    </a>
+                    <?php if (isLoggedIn()): ?>
+                        <a href="create_post.php" class="btn btn-secondary" style="width: 100%; text-align: center;">
+                            ✍️ Create Post
+                        </a>
+                        <a href="my_posts.php" class="btn btn-secondary" style="width: 100%; text-align: center;">
+                            📄 My Posts
+                        </a>
+                    <?php else: ?>
+                        <a href="login.php" class="btn btn-secondary" style="width: 100%; text-align: center;">
+                            🔐 Login
+                        </a>
+                        <a href="register.php" class="btn btn-primary" style="width: 100%; text-align: center;">
+                            📝 Join Community
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
         </aside>
     </div>
 </div>
-
-<style>
-/* Media Preview Styles for Index */
-.post-media-preview {
-    margin: 1rem 0;
-}
-
-.media-preview-grid {
-    display: grid;
-    gap: 0.5rem;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.media-preview-item {
-    position: relative;
-    overflow: hidden;
-    background: #f5f5f5;
-}
-
-.media-preview-item.single {
-    height: 300px;
-}
-
-.media-preview-item.double {
-    height: 200px;
-}
-
-.media-preview-item.triple {
-    height: 150px;
-}
-
-.media-preview-grid .media-preview-item:first-child.single {
-    grid-column: 1 / -1;
-}
-
-.media-preview-grid .media-preview-item.double:first-child {
-    grid-column: 1 / 2;
-}
-
-.media-preview-grid .media-preview-item.double:last-child {
-    grid-column: 2 / 3;
-}
-
-.media-preview-grid .media-preview-item.triple {
-    grid-column: span 1;
-}
-
-.media-preview-grid {
-    grid-template-columns: repeat(3, 1fr);
-}
-
-.media-preview-item img,
-.media-preview-item video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s;
-}
-
-.media-preview-item a {
-    display: block;
-    position: relative;
-    height: 100%;
-}
-
-.media-preview-item:hover img,
-.media-preview-item:hover video {
-    transform: scale(1.05);
-}
-
-.video-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.3);
-    transition: background 0.3s;
-}
-
-.video-overlay:hover {
-    background: rgba(0, 0, 0, 0.5);
-}
-
-.play-button {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    color: #333;
-    padding-left: 3px;
-}
-
-.media-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    font-size: 1.2rem;
-}
-
-@media (max-width: 768px) {
-    .media-preview-item.single,
-    .media-preview-item.double,
-    .media-preview-item.triple {
-        height: 200px;
-    }
-    
-    .media-preview-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-    
-    .media-preview-item.triple:last-child {
-        grid-column: 1 / -1;
-        height: 150px;
-    }
-}
-
-@media (max-width: 480px) {
-    .media-preview-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .media-preview-item {
-        height: 200px !important;
-        grid-column: 1 / -1 !important;
-    }
-}
-</style>
 
 <?php require_once 'includes/footer.php'; ?>

@@ -34,6 +34,25 @@ if ($post_stmt->rowCount() == 0) {
 $post = $post_stmt->fetch(PDO::FETCH_ASSOC);
 $page_title = $post['title'];
 
+// Get post media - Check if post_media table exists and get media
+$post_media = [];
+try {
+    $media_query = "
+        SELECT m.*, pm.display_order
+        FROM media_uploads m
+        JOIN post_media pm ON m.id = pm.media_id
+        WHERE pm.post_id = :post_id
+        ORDER BY pm.display_order ASC
+    ";
+    $media_stmt = $db->prepare($media_query);
+    $media_stmt->bindParam(':post_id', $post_id);
+    $media_stmt->execute();
+    $post_media = $media_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    // If media tables don't exist yet, create empty array
+    $post_media = [];
+}
+
 // Update view count
 $view_query = "UPDATE posts SET views = views + 1 WHERE id = :post_id";
 $view_stmt = $db->prepare($view_query);
@@ -110,6 +129,37 @@ $related_posts = $related_stmt->fetchAll(PDO::FETCH_ASSOC);
                 <div class="post-content" style="font-size: 1.1rem; line-height: 1.8; margin: 2rem 0;">
                     <?php echo nl2br(htmlspecialchars($post['content'])); ?>
                 </div>
+                
+                <!-- Display Media -->
+                <?php if (!empty($post_media)): ?>
+                    <div class="post-media">
+                        <div class="media-gallery <?php echo count($post_media) === 1 ? 'single' : (count($post_media) === 2 ? 'double' : 'multiple'); ?>">
+                            <?php foreach ($post_media as $media): ?>
+                                <div class="media-item">
+                                    <?php if ($media['file_type'] === 'image'): ?>
+                                        <img src="<?php echo htmlspecialchars($media['file_path']); ?>" 
+                                             alt="<?php echo htmlspecialchars($media['original_name']); ?>"
+                                             onclick="openMediaModal('<?php echo htmlspecialchars($media['file_path']); ?>', 'image', '<?php echo htmlspecialchars($media['original_name']); ?>')">
+                                    <?php else: ?>
+                                        <video controls preload="metadata">
+                                            <source src="<?php echo htmlspecialchars($media['file_path']); ?>" 
+                                                    type="<?php echo htmlspecialchars($media['mime_type']); ?>">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <!-- Debug: Show if post should have media but none found -->
+                    <?php if (isset($post['has_media']) && $post['has_media']): ?>
+                        <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 1rem; border-radius: 5px; margin: 1rem 0;">
+                            <strong>🔍 Debug Info:</strong> Post marked as having media but no media files found.
+                            <br><small>Post ID: <?php echo $post_id; ?> | Has Media Flag: <?php echo $post['has_media'] ? 'Yes' : 'No'; ?></small>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
                 
                 <?php if ($post['tags']): ?>
                     <div class="tags">
@@ -253,6 +303,15 @@ $related_posts = $related_stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 </div>
 
+<!-- Media Modal -->
+<div id="media-modal" class="media-modal" onclick="closeMediaModal()">
+    <div class="media-modal-content">
+        <span class="media-modal-close" onclick="closeMediaModal()">&times;</span>
+        <img id="modal-image" src="" alt="" style="max-width: 100%; max-height: 80vh; display: none;">
+        <div id="modal-info" class="media-modal-info"></div>
+    </div>
+</div>
+
 <script>
 function sharePost() {
     if (navigator.share) {
@@ -292,6 +351,93 @@ function shareToEmail() {
     const body = encodeURIComponent(`Check out this interesting post from Student's Community Engagement Blog:\n\n${window.location.href}`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
 }
+
+// Media modal functionality
+function openMediaModal(src, type, filename) {
+    const modal = document.getElementById('media-modal');
+    const modalImage = document.getElementById('modal-image');
+    const modalInfo = document.getElementById('modal-info');
+    
+    if (type === 'image') {
+        modalImage.src = src;
+        modalImage.alt = filename;
+        modalImage.style.display = 'block';
+        modalInfo.innerHTML = `<p><strong>${filename}</strong></p>`;
+    }
+    
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeMediaModal() {
+    const modal = document.getElementById('media-modal');
+    const modalImage = document.getElementById('modal-image');
+    
+    modal.style.display = 'none';
+    modalImage.style.display = 'none';
+    modalImage.src = '';
+    document.body.style.overflow = 'auto';
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeMediaModal();
+    }
+});
 </script>
+
+<style>
+.media-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+}
+
+.media-modal-content {
+    position: relative;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 2rem;
+}
+
+.media-modal-close {
+    position: absolute;
+    top: 20px;
+    right: 35px;
+    color: white;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.media-modal-close:hover {
+    opacity: 0.7;
+}
+
+.media-modal-info {
+    color: white;
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.media-item img {
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.media-item img:hover {
+    transform: scale(1.02);
+}
+</style>
 
 <?php require_once 'includes/footer.php'; ?>

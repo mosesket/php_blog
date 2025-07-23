@@ -85,7 +85,7 @@ if (isLoggedIn()) {
                 <p>Don't have an account? <a href="register.php" style="color: #3498db;">Register here</a></p>
                 <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
                     <strong>Demo Credentials:</strong><br>
-                    Username: <code>ket_dev</code> | Password: <code>password123</code>
+                    Username: <code>bisola_dev</code> | Password: <code>password123</code>
                 </p>
             </div>
         </main>
